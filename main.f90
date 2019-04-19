@@ -68,17 +68,17 @@ subroutine input
   use global_variables
   implicit none
 
-  nkxy = 2
-  nkz  = 2
+  nkxy = 64
+  nkz  = 64
   nk = nkxy*nkz
 
-  Tprop = 120d0*fs*2.5d0 !380d0*fs*2.5d0
-  dt = 0.01d0
+  Tprop = 380d0*fs*2.5d0
+  dt = 0.1d0
   nt = aint(Tprop/dt)+1
 
-  E0_IR = 0d0
+  E0_IR = 0d0*ev/angstrom
   omega0_IR = 280d-3*ev
-  tpulse_IR = 120d0*fs*2.5d0 !380d0*fs*2.5d0
+  tpulse_IR = 380d0*fs*2.5d0
 
   E0_XUV = 1d-6
   omega0_XUV = 22d0*ev
@@ -126,7 +126,7 @@ subroutine init_k_grids
   real(8) :: kx_max,kx_min, dkx
   real(8) :: kz_max,kz_min, dkz
 
-  kx_min =  0d0 !-0.5d0*0.5d0*ev/v_fermi
+  kx_min = -0.5d0*0.5d0*ev/v_fermi
   kx_max =  0.5d0*0.5d0*ev/v_fermi
   dkx = (kx_max-kx_min)/(nkxy-1)
 
@@ -258,8 +258,8 @@ subroutine dt_evolve_k(it,ik)
   real(8) :: At_IR_t(2), Et_XUV_t
   complex(8) :: zrho_t(3,3),zham(3,3), zLrho_rk(3,3,4)
 
-  zdip_B(ik)= 0d0
-  zdip_A(ik)= 1d0
+  zdip_B(ik)= -1d0
+  zdip_A(ik)=  1d0
 
 ! time, t
   At_IR_t(:) = At_IR(:,it)
