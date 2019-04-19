@@ -126,13 +126,9 @@ subroutine init_k_grids
   real(8) :: kx_max,kx_min, dkx
   real(8) :: kz_max,kz_min, dkz
 
-  kx_min = -0.5d0*0.5d0*ev/v_fermi
+  kx_min =  0d0 !-0.5d0*0.5d0*ev/v_fermi
   kx_max =  0.5d0*0.5d0*ev/v_fermi
   dkx = (kx_max-kx_min)/(nkxy-1)
-
-  kz_min = sqrt(2d0*(omega0_XUV-0.5d0*(kx0_K**2+ky0_K**2)-1d0*ev))
-  kz_max = sqrt(2d0*(omega0_XUV-0.5d0*(kx0_K**2+ky0_K**2)+1d0*ev))
-  dkz = (kz_max-kz_min)/(nkz-1)
 
   ky0 = 0d0
 
@@ -141,6 +137,12 @@ subroutine init_k_grids
     do ikz = 1, nkz
       ik = ik + 1
       kx0(ik) = kx_min + dkx*(ikx-1)
+
+      kz_min = sqrt(2d0*(omega0_XUV-0.5d0*((kx0_K+kx0(ik))**2+ky0_K**2)-1d0*ev))
+      kz_max = sqrt(2d0*(omega0_XUV-0.5d0*((kx0_K+kx0(ik))**2+ky0_K**2)+1d0*ev))
+      dkz = (kz_max-kz_min)/(nkz-1)
+
+
       kz0(ik) = kz_min + dkz*(ikz-1)
       ikxy_table(ik) = ikx
       ikz_table(ik)  = ikz
