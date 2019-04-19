@@ -138,8 +138,8 @@ subroutine init_k_grids
       ik = ik + 1
       kx0(ik) = kx_min + dkx*(ikx-1)
 
-      kz_min = sqrt(2d0*(omega0_XUV-0.5d0*((kx0_K+kx0(ik))**2+ky0_K**2)-1d0*ev))
-      kz_max = sqrt(2d0*(omega0_XUV-0.5d0*((kx0_K+kx0(ik))**2+ky0_K**2)+1d0*ev))
+      kz_min = sqrt(2d0*(omega0_XUV-0.5d0*((kx0_K+kx0(ik))**2+ky0_K**2)-0.5d0*ev))
+      kz_max = sqrt(2d0*(omega0_XUV-0.5d0*((kx0_K+kx0(ik))**2+ky0_K**2)+0.5d0*ev))
       dkz = (kz_max-kz_min)/(nkz-1)
 
 
