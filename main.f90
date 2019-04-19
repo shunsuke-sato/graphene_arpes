@@ -104,8 +104,8 @@ subroutine initialize
 
   allocate(zrho_k(3,3,nk_start:nk_end))
   allocate(zdip_B(nk), zdip_A(nk))
-  allocate(kx0(nk),ky0(nk),kz0(nkz))
-  allocate(kx(nk),ky(nk),kz(nkz))
+  allocate(kx0(nk),ky0(nk),kz0(nk))
+  allocate(kx(nk),ky(nk),kz(nk))
 
   zrho_k = 0d0
   zrho_k(1,1,:) = 1d0
