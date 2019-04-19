@@ -232,6 +232,62 @@ subroutine dt_evolve_k(it,ik)
 
 end subroutine dt_evolve_k
 !-------------------------------------------------------------------------------
+subroutine zLrho_op(zrho_in,zham,zLrho_out)
+  use global_variables
+  implicit none
+  complex(8),intent(in) :: zrho_in(3,3), zham(3,3)
+  complex(8),intent(out) :: zLrho_out(3,3)
+  real(8) :: alpha_r, alpha_i, phi
+  complex(8) :: zalpha, zeig(3,3)
+  complex(8) :: zrho_col
+
+  zLrho_out = -zi*(matmul(zham,zrho_in)-matmul(zrho_in,zham))
+
+  alpha_r =  real(zham(3,2))
+  alpha_i = aimag(zham(3,2))
+
+  if(alpha_r > 0)then
+    phi = atan(alpha_i/alpha_r)
+  else if(alpha_r <0)then
+    phi = atan(alpha_i/alpha_r) + pi
+  else if(alpha_i >0)then
+    phi = 0.5d0*pi
+  else
+    phi = -0.5d0*pi
+  end if
+  zalpha = exp(zi*phi)
+
+  zeig(1,1) = 1d0
+  zeig(2,1) = 0d0
+  zeig(3,1) = 0d0
+
+  zeig(1,2) = 0d0
+  zeig(2,2) = 1d0/sqrt(2d0)
+  zeig(3,2) = -zalpha/sqrt(2d0)
+
+  zeig(1,3) = 0d0
+  zeig(2,3) = 1d0/sqrt(2d0)
+  zeig(3,3) = zalpha/sqrt(2d0)
+
+  zrho_col = matmul(transpose(conjg(zeig)), matmul(zrho_in,zeig))
+  zrho_col(1,1) = 0d0
+  zrho_col(2,1) = -zrho_col(2,1)/T12
+  zrho_col(3,1) = -zrho_col(3,1)/T13
+  zrho_col(1,2) = conjg(zrho_col(1,2))
+  zrho_col(2,2) = 0d0
+  zrho_col(3,2) = -zrho_col(3,2)/T23
+  zrho_col(1,3) = conjg(zrho_col(3,1))
+  zrho_col(2,3) = conjg(zrho_col(2,3))
+  zrho_col(3,3) = 0d0
+
+  zrho_col = matmul( matmul(zeig, zrho_col), transpose(conjg(zeig)))
+
+  
+  zLrho_out = zLrho_out + zrho_col 
+
+  zLrho_out(1,1) = 0d0
+
+end subroutine zLrho_op
 !-------------------------------------------------------------------------------
 !-------------------------------------------------------------------------------
 !-------------------------------------------------------------------------------
