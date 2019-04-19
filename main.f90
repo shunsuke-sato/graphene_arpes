@@ -19,13 +19,14 @@ module global_variables
 
 ! material parameters
   real(8),parameter :: v_fermi = clight*1.12d6/299792458d0
-  real(8),parameter :: T12=1d6, T23=1d6, T13=1d6
+  real(8),parameter :: T12=20d0*fs, T23=20d0*fs, T13=20d0*fs
   real(8),parameter :: kx0_K=4d0*pi/(3d0*2.46d0*angstrom),ky0_K=0d0
 
 ! system
   integer :: nkxy,nkz,nk
   integer :: nk_start, nk_end
   integer :: nk_average, nk_remainder
+  integer,allocatable :: ikxy_table(:),ikz_table(:)
   complex(8),allocatable :: zrho_k(:,:,:)
   complex(8),allocatable :: zdip_B(:), zdip_A(:)
   real(8),allocatable :: kx0(:),ky0(:),kz0(:)
@@ -67,19 +68,19 @@ subroutine input
   use global_variables
   implicit none
 
-  nkxy = 16
-  nkz  = 16
+  nkxy = 2
+  nkz  = 2
   nk = nkxy*nkz
 
-  Tprop = 380d0*fs*2.5d0
-  dt = 0.1d0
+  Tprop = 120d0*fs*2.5d0 !380d0*fs*2.5d0
+  dt = 0.01d0
   nt = aint(Tprop/dt)+1
 
   E0_IR = 0d0
   omega0_IR = 280d-3*ev
-  tpulse_IR = 380d0*fs*2.5d0
+  tpulse_IR = 120d0*fs*2.5d0 !380d0*fs*2.5d0
 
-  E0_XUV = 1d-4
+  E0_XUV = 1d-6
   omega0_XUV = 22d0*ev
   tpulse_XUV = 120d0*fs*2.5d0
 
@@ -106,6 +107,7 @@ subroutine initialize
   allocate(zdip_B(nk), zdip_A(nk))
   allocate(kx0(nk),ky0(nk),kz0(nk))
   allocate(kx(nk),ky(nk),kz(nk))
+  allocate(ikxy_table(nk),ikz_table(nk))
 
   zrho_k = 0d0
   zrho_k(1,1,:) = 1d0
@@ -140,6 +142,8 @@ subroutine init_k_grids
       ik = ik + 1
       kx0(ik) = kx_min + dkx*(ikx-1)
       kz0(ik) = kz_min + dkz*(ikz-1)
+      ikxy_table(ik) = ikx
+      ikz_table(ik)  = ikz
     end do
   end do
 
@@ -170,7 +174,7 @@ subroutine init_laser
     end if
 
     if(abs(xx) < 0.5d0*tpulse_XUV)then
-      Et_XUV(it) = -E0_XUV/omega0_XUV*cos(pi*xx/tpulse_XUV)**2*sin(omega0_XUV*xx)
+      Et_XUV(it) = -E0_XUV*cos(pi*xx/tpulse_XUV)**2*sin(omega0_XUV*xx)
     end if
 
     tt = dt*it + 0.5d0*dt
@@ -181,10 +185,18 @@ subroutine init_laser
     end if
 
     if(abs(xx) < 0.5d0*tpulse_XUV)then
-      Et_XUV_dt2(it) = -E0_XUV/omega0_XUV*cos(pi*xx/tpulse_XUV)**2*sin(omega0_XUV*xx)
+      Et_XUV_dt2(it) = -E0_XUV*cos(pi*xx/tpulse_XUV)**2*sin(omega0_XUV*xx)
     end if
 
   end do
+
+  if(if_root_global)then
+    open(20,file='laser.out')
+    do it = 0, nt + 1
+      write(20,"(999e16.6e3)")dt*it,At_IR(:,it),Et_XUV(it)
+    end do
+    close(20)
+  end if
 
 
 end subroutine init_laser
@@ -192,15 +204,30 @@ end subroutine init_laser
 subroutine time_propagation
   use global_variables
   implicit none
-  integer :: it
+  integer :: it, ik, ikx, ikz
+  real(8) :: pop_k(nkxy,nkz),eps_k
 
   do it = 0, nt
-
+    if(if_root_global .and. (mod(it,nt/200)==0))write(*,*)'it',it,nt
     call dt_evolve(it)
 
   end do
 
+  pop_k = 0d0
+  do ik = nk_start, nk_end
+    pop_k(ikxy_table(ik),ikz_table(ik))=real(zrho_k(2,2,ik) + zrho_k(3,3,ik))
+  end do
 
+  call comm_allreduce(pop_k)
+  if(if_root_global)then
+    open(20,file='pes_spectrum.out')
+    do ik = 1, nk
+      eps_k = 0.5d0*( (kx0(ik)+kx0_K)**2 + (ky0(ik)+ky0_K)**2 + kz0(ik)**2)
+      write(20,"(999e26.16e3)")kx0(ik),ky0(ik),eps_k,pop_k(ikxy_table(ik),ikz_table(ik))
+    end do
+    write(20,*)
+    close(20)
+  end if
 
 end subroutine time_propagation
 !-------------------------------------------------------------------------------
@@ -224,6 +251,9 @@ subroutine dt_evolve_k(it,ik)
   real(8) :: kxt, kyt, kzt, eps_k
   real(8) :: At_IR_t(2), Et_XUV_t
   complex(8) :: zrho_t(3,3),zham(3,3), zLrho_rk(3,3,4)
+
+  zdip_B(ik)= 0d0
+  zdip_A(ik)= 1d0
 
 ! time, t
   At_IR_t(:) = At_IR(:,it)
