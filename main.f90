@@ -221,11 +221,15 @@ subroutine time_propagation
   call comm_allreduce(pop_k)
   if(if_root_global)then
     open(20,file='pes_spectrum.out')
-    do ik = 1, nk
-      eps_k = 0.5d0*( (kx0(ik)+kx0_K)**2 + (ky0(ik)+ky0_K)**2 + kz0(ik)**2)
-      write(20,"(999e26.16e3)")kx0(ik),ky0(ik),eps_k,pop_k(ikxy_table(ik),ikz_table(ik))
+    ik = 0
+    do ikx = 1, nkxy
+      do ikz = 1,nkz
+        ik = ik + 1
+        eps_k = 0.5d0*( (kx0(ik)+kx0_K)**2 + (ky0(ik)+ky0_K)**2 + kz0(ik)**2)
+        write(20,"(999e26.16e3)")kx0(ik),ky0(ik),eps_k,pop_k(ikxy_table(ik),ikz_table(ik))
+      end do
+      write(20,*)
     end do
-    write(20,*)
     close(20)
   end if
 
