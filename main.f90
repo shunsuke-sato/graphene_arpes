@@ -20,17 +20,16 @@ module global_variables
 ! material parameters
   real(8),parameter :: v_fermi = clight*1.12d6/299792458d0
   real(8),parameter :: T12=1d6, T23=1d6, T13=1d6
-  real(8),parameter :: kx0_K=4d0*pi/(3d0*2.46d0*angstrom)0d0,ky0_K=0d0
+  real(8),parameter :: kx0_K=4d0*pi/(3d0*2.46d0*angstrom),ky0_K=0d0
 
 ! system
   integer :: nkxy,nkz,nk
   integer :: nk_start, nk_end
   integer :: nk_average, nk_remainder
   complex(8),allocatable :: zrho_k(:,:,:)
-  real(8),allocatable :: eps_k(:)
   complex(8),allocatable :: zdip_B(:), zdip_A(:)
   real(8),allocatable :: kx0(:),ky0(:),kz0(:)
-  real(8).allocatable :: kx(:),ky(:),kz(:)
+  real(8),allocatable :: kx(:),ky(:),kz(:)
 
 
 ! time-propagation
@@ -78,11 +77,11 @@ subroutine input
 
   E0_IR = 0d0
   omega0_IR = 280d-3*ev
-  tpulse0_IR = 380d0*fs*2.5d0
+  tpulse_IR = 380d0*fs*2.5d0
 
   E0_XUV = 1d-4
   omega0_XUV = 22d0*ev
-  tpulse0_XUV = 120d0*fs*2.5d0
+  tpulse_XUV = 120d0*fs*2.5d0
 
 
 end subroutine input
@@ -104,7 +103,7 @@ subroutine initialize
   
 
   allocate(zrho_k(3,3,nk_start:nk_end))
-  allocate(zdip_v(nk), zdip_c(nk))
+  allocate(zdip_B(nk), zdip_A(nk))
   allocate(kx0(nk),ky0(nk),kz0(nkz))
   allocate(kx(nk),ky(nk),kz(nkz))
 
@@ -153,34 +152,36 @@ subroutine init_laser
   real(8) :: tt, xx, tcenter
   integer :: it
 
-  allocate(At_IR(2,0:nt+1), At_IR_dt2(:,0:nt+1))
+  allocate(At_IR(2,0:nt+1), At_IR_dt2(2,0:nt+1))
   allocate(Et_XUV(0:nt+1), Et_XUV_dt2(0:nt+1))
   At_IR = 0d0; At_IR_dt2 = 0d0
   Et_XUV = 0d0; Et_XUV_dt2 = 0d0
 
-  tcenter = max(0.5d0*tpulse0_IR,0.5d0*tpulse_XUV)
+  tcenter = max(0.5d0*tpulse_IR,0.5d0*tpulse_XUV)
   
 
   do it = 0, nt+1
 
     tt = dt*it
     xx = tt - tcenter
-    if(abs(xx) < 0.5d0*tpulse0_IR)then
-      At_IR(it) = -E0_IR/omega0_IR*cos(pi*xx/tpulse0_IR)**2*sin(omega0_IR*xx)
+    if(abs(xx) < 0.5d0*tpulse_IR)then
+      At_IR(1,it) = -E0_IR/omega0_IR*cos(pi*xx/tpulse_IR)**2*sin(omega0_IR*xx)
+      At_IR(2,it) = 0d0
     end if
 
-    if(abs(xx) < 0.5d0*tpulse0_XUV)then
-      Et_XUV(it) = -E0_XUV/omega0_XUV*cos(pi*xx/tpulse0_XUV)**2*sin(omega0_XUV*xx)
+    if(abs(xx) < 0.5d0*tpulse_XUV)then
+      Et_XUV(it) = -E0_XUV/omega0_XUV*cos(pi*xx/tpulse_XUV)**2*sin(omega0_XUV*xx)
     end if
 
     tt = dt*it + 0.5d0*dt
     xx = tt - tcenter
-    if(abs(xx) < 0.5d0*tpulse0_IR)then
-      At_IR_dt2(it) = -E0_IR/omega0_IR*cos(pi*xx/tpulse0_IR)**2*sin(omega0_IR*xx)
+    if(abs(xx) < 0.5d0*tpulse_IR)then
+      At_IR_dt2(1,it) = -E0_IR/omega0_IR*cos(pi*xx/tpulse_IR)**2*sin(omega0_IR*xx)
+      At_IR_dt2(2,it) = 0d0
     end if
 
-    if(abs(xx) < 0.5d0*tpulse0_XUV)then
-      Et_XUV_dt2(it) = -E0_XUV/omega0_XUV*cos(pi*xx/tpulse0_XUV)**2*sin(omega0_XUV*xx)
+    if(abs(xx) < 0.5d0*tpulse_XUV)then
+      Et_XUV_dt2(it) = -E0_XUV/omega0_XUV*cos(pi*xx/tpulse_XUV)**2*sin(omega0_XUV*xx)
     end if
 
   end do
@@ -207,6 +208,7 @@ subroutine dt_evolve(it)
   use global_variables
   implicit none
   integer,intent(in) :: it
+  integer :: ik
 
   do ik = nk_start, nk_end
     call dt_evolve_k(it,ik)
@@ -305,7 +307,7 @@ subroutine dt_evolve_k(it,ik)
   call zLrho_op(zrho_t,zham,zLrho_rk(:,:,4))
 
   
-  zrho_k(:,:,ik) + zrho_k(:,:,ik) + dt/6d0*(zLrho_rk(:,:,1)   &
+  zrho_k(:,:,ik) = zrho_k(:,:,ik) + dt/6d0*(zLrho_rk(:,:,1)   &
                                        +2d0*zLrho_rk(:,:,2)   &
                                        +2d0*zLrho_rk(:,:,3)   &
                                        +    zLrho_rk(:,:,4))
@@ -320,7 +322,7 @@ subroutine zLrho_op(zrho_in,zham,zLrho_out)
   complex(8),intent(out) :: zLrho_out(3,3)
   real(8) :: alpha_r, alpha_i, phi
   complex(8) :: zalpha, zeig(3,3)
-  complex(8) :: zrho_col
+  complex(8) :: zrho_col(3,3)
 
   zLrho_out = -zi*(matmul(zham,zrho_in)-matmul(zrho_in,zham))
 
