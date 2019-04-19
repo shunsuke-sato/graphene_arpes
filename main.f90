@@ -12,13 +12,15 @@ module global_variables
   complex(8),parameter :: zi = (0d0, 1d0)
 
 ! physics parameters
-  real(8),parameter :: ev = 1d0/27.2114d0
   real(8),parameter :: fs = 1d0/0.024189d0
+  real(8),parameter :: ev = 1d0/27.2114d0
+  real(8),parameter :: angstrom = 1d0/0.52917721067d0
+  real(8),parameter :: clight = 137.035999139d0
 
 ! material parameters
-  real(8),parameter :: v_fermi = 1d0
+  real(8),parameter :: v_fermi = clight*1.12d6/299792458d0
   real(8),parameter :: T12=1d6, T23=1d6, T13=1d6
-  real(8),parameter :: kx0_K=0d0,ky0_K=0d0
+  real(8),parameter :: kx0_K=4d0*pi/(3d0*2.46d0*angstrom)0d0,ky0_K=0d0
 
 ! system
   integer :: nkxy,nkz,nk
@@ -36,6 +38,8 @@ module global_variables
   real(8) :: dt, Tprop
 
 ! laser
+  real(8) :: E0_IR, omega0_IR, tpulse_IR
+  real(8) :: E0_XUV, omega0_XUV, tpulse_XUV
   real(8),allocatable :: At_IR(:,:), At_IR_dt2(:,:)
   real(8),allocatable :: Et_XUV(:), Et_XUV_dt2(:)
 
@@ -64,14 +68,21 @@ subroutine input
   use global_variables
   implicit none
 
-  nkxy = 64
-  nkz  = 64
+  nkxy = 16
+  nkz  = 16
   nk = nkxy*nkz
 
-  Tprop = 40d0*fs
-  dt = 0.01d0
+  Tprop = 380d0*fs*2.5d0
+  dt = 0.1d0
   nt = aint(Tprop/dt)+1
 
+  E0_IR = 0d0
+  omega0_IR = 280d-3*ev
+  tpulse0_IR = 380d0*fs*2.5d0
+
+  E0_XUV = 1d-4
+  omega0_XUV = 22d0*ev
+  tpulse0_XUV = 120d0*fs*2.5d0
 
 
 end subroutine input
@@ -106,6 +117,76 @@ subroutine initialize
 
 
 end subroutine initialize
+!-------------------------------------------------------------------------------
+subroutine init_k_grids
+  use global_variables
+  implicit none
+  integer :: ik, ikx, ikz
+  real(8) :: kx_max,kx_min, dkx
+  real(8) :: kz_max,kz_min, dkz
+
+  kx_min = -0.5d0*0.5d0*ev/v_fermi
+  kx_max =  0.5d0*0.5d0*ev/v_fermi
+  dkx = (kx_max-kx_min)/(nkxy-1)
+
+  kz_min = sqrt(2d0*(omega0_XUV-0.5d0*(kx0_K**2+ky0_K**2)-1d0*ev))
+  kz_max = sqrt(2d0*(omega0_XUV-0.5d0*(kx0_K**2+ky0_K**2)+1d0*ev))
+  dkz = (kz_max-kz_min)/(nkz-1)
+
+  ky0 = 0d0
+
+  ik = 0
+  do ikx = 1, nkxy
+    do ikz = 1, nkz
+      ik = ik + 1
+      kx0(ik) = kx_min + dkx*(ikx-1)
+      kz0(ik) = kz_min + dkz*(ikz-1)
+    end do
+  end do
+
+
+end subroutine init_k_grids
+!-------------------------------------------------------------------------------
+subroutine init_laser
+  use global_variables
+  implicit none
+  real(8) :: tt, xx, tcenter
+  integer :: it
+
+  allocate(At_IR(2,0:nt+1), At_IR_dt2(:,0:nt+1))
+  allocate(Et_XUV(0:nt+1), Et_XUV_dt2(0:nt+1))
+  At_IR = 0d0; At_IR_dt2 = 0d0
+  Et_XUV = 0d0; Et_XUV_dt2 = 0d0
+
+  tcenter = max(0.5d0*tpulse0_IR,0.5d0*tpulse_XUV)
+  
+
+  do it = 0, nt+1
+
+    tt = dt*it
+    xx = tt - tcenter
+    if(abs(xx) < 0.5d0*tpulse0_IR)then
+      At_IR(it) = -E0_IR/omega0_IR*cos(pi*xx/tpulse0_IR)**2*sin(omega0_IR*xx)
+    end if
+
+    if(abs(xx) < 0.5d0*tpulse0_XUV)then
+      Et_XUV(it) = -E0_XUV/omega0_XUV*cos(pi*xx/tpulse0_XUV)**2*sin(omega0_XUV*xx)
+    end if
+
+    tt = dt*it + 0.5d0*dt
+    xx = tt - tcenter
+    if(abs(xx) < 0.5d0*tpulse0_IR)then
+      At_IR_dt2(it) = -E0_IR/omega0_IR*cos(pi*xx/tpulse0_IR)**2*sin(omega0_IR*xx)
+    end if
+
+    if(abs(xx) < 0.5d0*tpulse0_XUV)then
+      Et_XUV_dt2(it) = -E0_XUV/omega0_XUV*cos(pi*xx/tpulse0_XUV)**2*sin(omega0_XUV*xx)
+    end if
+
+  end do
+
+
+end subroutine init_laser
 !-------------------------------------------------------------------------------
 subroutine time_propagation
   use global_variables
