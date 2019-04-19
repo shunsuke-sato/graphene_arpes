@@ -386,11 +386,11 @@ subroutine zLrho_op(zrho_in,zham,zLrho_out)
   zrho_col(1,1) = 0d0
   zrho_col(2,1) = -zrho_col(2,1)/T12
   zrho_col(3,1) = -zrho_col(3,1)/T13
-  zrho_col(1,2) = conjg(zrho_col(1,2))
+  zrho_col(1,2) = conjg(zrho_col(2,1))
   zrho_col(2,2) = 0d0
   zrho_col(3,2) = -zrho_col(3,2)/T23
   zrho_col(1,3) = conjg(zrho_col(3,1))
-  zrho_col(2,3) = conjg(zrho_col(2,3))
+  zrho_col(2,3) = conjg(zrho_col(3,2))
   zrho_col(3,3) = 0d0
 
   zrho_col = matmul( matmul(zeig, zrho_col), transpose(conjg(zeig)))
