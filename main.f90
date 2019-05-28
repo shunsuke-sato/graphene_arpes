@@ -78,11 +78,11 @@ subroutine input
 
   E0_IR = 0d0*ev/angstrom
   omega0_IR = 280d-3*ev
-  tpulse_IR = 380d0*fs*2.5d0
+  tpulse_IR = 380d0*fs/0.364056664d0
 
   E0_XUV = 1d-6
   omega0_XUV = 22d0*ev
-  tpulse_XUV = 120d0*fs*2.5d0
+  tpulse_XUV = 120d0*fs/0.364056664d0
 
 
 end subroutine input
