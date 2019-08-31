@@ -21,6 +21,7 @@ module global_variables
   real(8),parameter :: v_fermi = clight*1.12d6/299792458d0
   real(8),parameter :: T12=20d0*fs, T23=20d0*fs, T13=20d0*fs
   real(8),parameter :: kx0_K=4d0*pi/(3d0*2.46d0*angstrom),ky0_K=0d0
+  real(8),parameter :: work_function = 4.5d0*ev
 
 ! system
   integer :: nkxy,nkz,nk
@@ -138,8 +139,8 @@ subroutine init_k_grids
       ik = ik + 1
       kx0(ik) = kx_min + dkx*(ikx-1)
 
-      kz_min = sqrt(2d0*(omega0_XUV-0.5d0*((kx0_K+kx0(ik))**2+ky0_K**2)-0.5d0*ev))
-      kz_max = sqrt(2d0*(omega0_XUV-0.5d0*((kx0_K+kx0(ik))**2+ky0_K**2)+0.5d0*ev))
+      kz_min = sqrt(2d0*(omega0_XUV-0.5d0*((kx0_K+kx0(ik))**2+ky0_K**2)-work_function-0.5d0*ev))
+      kz_max = sqrt(2d0*(omega0_XUV-0.5d0*((kx0_K+kx0(ik))**2+ky0_K**2)-work_function+0.5d0*ev))
       dkz = (kz_max-kz_min)/(nkz-1)
 
 
@@ -227,7 +228,7 @@ subroutine time_propagation
     do ikx = 1, nkxy
       do ikz = 1,nkz
         ik = ik + 1
-        eps_k = 0.5d0*( (kx0(ik)+kx0_K)**2 + (ky0(ik)+ky0_K)**2 + kz0(ik)**2)
+        eps_k = 0.5d0*( (kx0(ik)+kx0_K)**2 + (ky0(ik)+ky0_K)**2 + kz0(ik)**2) + work_function
         write(20,"(999e26.16e3)")kx0(ik),ky0(ik),eps_k,pop_k(ikxy_table(ik),ikz_table(ik))
       end do
       write(20,*)
@@ -269,7 +270,7 @@ subroutine dt_evolve_k(it,ik)
   kyt = ky0(ik) + At_IR_t(2)
   kzt = kz0(ik)
 
-  eps_k = 0.5d0*( (kxt+kx0_K)**2 + (kyt+ky0_K)**2 + kzt**2)
+  eps_k = 0.5d0*( (kxt+kx0_K)**2 + (kyt+ky0_K)**2 + kzt**2) + work_function
 
 
   zham(1,1) = 0d0
@@ -295,7 +296,7 @@ subroutine dt_evolve_k(it,ik)
   kyt = ky0(ik) + At_IR_t(2)
   kzt = kz0(ik)
 
-  eps_k = 0.5d0*( (kxt+kx0_K)**2 + (kyt+ky0_K)**2 + kzt**2)
+  eps_k = 0.5d0*( (kxt+kx0_K)**2 + (kyt+ky0_K)**2 + kzt**2) + work_function
 
 
   zham(1,1) = 0d0
@@ -325,7 +326,7 @@ subroutine dt_evolve_k(it,ik)
   kyt = ky0(ik) + At_IR_t(2)
   kzt = kz0(ik)
 
-  eps_k = 0.5d0*( (kxt+kx0_K)**2 + (kyt+ky0_K)**2 + kzt**2)
+  eps_k = 0.5d0*( (kxt+kx0_K)**2 + (kyt+ky0_K)**2 + kzt**2) + work_function
 
 
   zham(1,1) = 0d0
